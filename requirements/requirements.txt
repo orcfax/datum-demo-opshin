@@ -1,0 +1,6 @@
+# requirements for the production project.
+
+cbor2~=5.4.6
+numpy~=1.26.0
+opshin~=0.18.0
+pycardano==0.9.0

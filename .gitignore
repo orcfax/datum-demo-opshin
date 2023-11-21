@@ -1,0 +1,9 @@
+.idea
+.transactions
+.wallet
+build
+__pycache__
+venv
+
+# PyCardano.
+*.signed

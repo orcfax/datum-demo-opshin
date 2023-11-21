@@ -1,0 +1,2 @@
+# Configurtion file for Markdown lint. Add exceptions here.
+default: true
