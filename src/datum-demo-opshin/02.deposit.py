@@ -6,11 +6,8 @@ import sys
 
 from config import (
     LOVELACE_AMOUNT,
-    POLICY_ID,
-    TOKEN_NAME,
     context,
     network,
-    tokens_amount,
 )
 from contract import PublishParams
 from library import (
@@ -22,6 +19,8 @@ from library import (
     payment_address,
     save_transaction,
     submit_and_log_tx,
+    payment_skey,
+    payment_vkey,
 )
 from pycardano import (
     Address,
@@ -38,7 +37,8 @@ def deposit_script():
     contract_script = get_contract_script()
     script_hash = plutus_script_hash(contract_script)
     script_address = Address(script_hash, network=network)
-    logger.info("publisher address: %s", client_address)
+
+    # logger.info("publisher address: %s", client_address)
     logger.info("script address: %s", script_address)
 
     source = client_vkey.hash().to_primitive()
@@ -47,36 +47,42 @@ def deposit_script():
         "fee address: %s", Address(payment_address.payment_part, network=network)
     )
 
-    fee = 2000000
+    fee = 1000000
     datum = PublishParams(source, fee_address, fee)
 
     logger.info("Creating the transaction...")
     transaction = TransactionBuilder(context)
-    transaction.add_input_address(client_address)
+    transaction.add_input_address(payment_address)
 
-    logger.info("lovelace amount: %s", LOVELACE_AMOUNT)
-    logger.info("token name: %s", TOKEN_NAME)
-    logger.info("policy id: %s", POLICY_ID)
-    logger.info("tokens amount: %s", tokens_amount)
+    # logger.info("lovelace amount: %s", LOVELACE_AMOUNT)
+    # logger.info("token name: %s", TOKEN_NAME)
+    # logger.info("policy id: %s", POLICY_ID)
+    # logger.info("tokens amount: %s", tokens_amount)
+
+    amount = 2000000
 
     transaction.add_output(
-        TransactionOutput(
-            script_address,
-            Value.from_primitive(
-                [
-                    LOVELACE_AMOUNT,
-                    {bytes.fromhex(POLICY_ID): {TOKEN_NAME: tokens_amount}},
-                ]
-            ),
-            datum=datum,
-        )
+        TransactionOutput(address=script_address, amount=amount, datum=datum)
     )
+
+    # transaction.add_output(
+    #    TransactionOutput(
+    #        script_address,
+    #        Value.from_primitive(
+    #            [
+    #                LOVELACE_AMOUNT,
+    #                {bytes.fromhex(POLICY_ID): {TOKEN_NAME: tokens_amount}},
+    #            ]
+    #        ),
+    #        datum=datum,
+    #    )
+    # )
 
     logger.info("Signing the transaction...")
 
     try:
         signed_tx = transaction.build_and_sign(
-            [client_skey], change_address=client_address
+            [payment_skey], change_address=payment_address
         )
     except UTxOSelectionException as err:
         logger.info("problem submitting tx check there are tokens minted: %s", err)

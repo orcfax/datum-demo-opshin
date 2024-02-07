@@ -42,9 +42,9 @@ def deploy_contract():
     )
     logger.info("Fee address PKH: %s", binascii.hexlify(fee_address).decode())
 
-    fee = 2000000
-    amount = Value(70000000)
+    script_value = Value(70000000)
 
+    fee = 1000000
     datum = PublishParams(source=deployer, fee_address=fee_address, fee=fee)
 
     logger.info("Creating the transaction...")
@@ -52,7 +52,7 @@ def deploy_contract():
     transaction.add_input_address(deployer_address)
     transaction.add_output(
         TransactionOutput(
-            script_address, amount=amount, datum=datum, script=contract_script
+            script_address, amount=script_value, datum=datum, script=contract_script
         )
     )
     logger.info("Signing the transaction...")

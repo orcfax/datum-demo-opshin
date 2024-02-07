@@ -1,9 +1,15 @@
 """Smart contract to perform some operation based on the validity of
 an Orcfax smart contract.
+
+An original version of this contract can be found at the link below. It
+provides a useful reference point for some of what is being done here:
+
+* https://github.com/orcfax/datum-demo-opshin/blob/bf3641760c8c2ec6ae9d2aeb9b1a47d026ba1033/src/datum-demo-opshin/contract.py
+
 """
 
-
 from opshin.ledger.interval import *  # pylint ignore=W0401
+
 
 # policy ID of the Oracle AUTH tokens
 # auth_policy_id = '104d51dd927761bf5d50d32e1ede4b2cff477d475fe32f4f780a4b21'
@@ -39,8 +45,9 @@ class PriceFeed(PlutusData):
 
 @dataclass
 class PublishParams(PlutusData):
-    """Smart Contract Datum format
-    source: the published, who can also reclaim the UTxO anytime (refund)
+    """Smart Contract Datum format.
+
+    source: the publisher, who can also reclaim the UTxO anytime (refund)
     fee_address: the address where the fee must be paid
     fee: the fee amount which must be paid
     """
@@ -51,7 +58,7 @@ class PublishParams(PlutusData):
 
 
 @dataclass
-class ExchangeRedeemer(PlutusData):
+class HelloWorldRedeemer(PlutusData):
     CONSTR_ID = 0
     pass
 
@@ -62,15 +69,43 @@ class RefundRedeemer(PlutusData):
     pass
 
 
+def validate_circuit_breaker(l_precision: int, l_price: int):
+    """todo..."""
+    # ADA safety breaker: 0.99. This value might be encoded in another
+    # reference datum belonging to the liquidator/client using this
+    # smart contract.
+    ada_circuit_breaker = 990000
+
+    # Calculate a signed integer value for the price.
+    l_precision = -(l_precision)
+    ada_price_precision = min([6, l_precision])
+    ada_price_precision = max([ada_price_precision, 6])
+    assert ada_price_precision <= 6, f"precision: {ada_price_precision}"
+    diff = max([l_precision, ada_price_precision]) - min(
+        [l_precision, ada_price_precision]
+    )
+    divisor = int(f"1{'0'*diff}")
+    if divisor > 1000000:
+        ada_price = l_price // divisor
+    else:
+        ada_price = l_price * divisor
+    assert (
+        ada_price < ada_circuit_breaker
+    ), f"ada price is greater than breaker: {ada_price}"
+
+
 def validator(
     datum: PublishParams,
-    redeemer: Union[ExchangeRedeemer, RefundRedeemer],
+    redeemer: Union[HelloWorldRedeemer, RefundRedeemer],
     context: ScriptContext,
 ) -> None:
+    """OpShin validator."""
+
     # salt provides a user-controlled mechanism to create a unique
-    # script address for testing.
-    salt = "O2c1TU6Jr12nSGyJJuAkp"  # replace using nanoid, uuid, ulid, etc.
-    if isinstance(redeemer, ExchangeRedeemer):
+    # script address for testing. Replace using nanoid, uuid, ulid, etc.
+    salt = "O2c1TU6Jr12nSGyJJuAkp"
+
+    if isinstance(redeemer, HelloWorldRedeemer):
         # check if the fee has been paid to the fee address
         fee_address_found = False  # fee address found
         fee_paid = False  # fee paid
@@ -79,33 +114,30 @@ def validator(
                 fee_address_found = True
                 if item.value.get(b"", {b"": 0}).get(b"", 0) >= datum.fee:
                     fee_paid = True
-        assert fee_address_found, "Fee address not found in outputs!"
-        assert fee_paid, "Fee too small!"
+        assert fee_address_found, "redeemer fee address not found in outputs!"
+        assert fee_paid, "redeemer fee too small!"
 
         # Check if the datum was published by the oracle by checking
         # if the token attached to the datum is the correct one
         auth_policy = False  # Datum has the token with the correct auth policy attached
         datum_is_price_feed = False  # Datum is a PriceFeed object
-        datum_condition = False  # datum condition
-        price_feed_valid_through = 0  # Validity expiration time
 
-        # An Orcfax price-feed datum contains the target price-pair and
-        # reversed value, so ADA/USD and USD/ADA in the case of ADA/USD.
-        # l_ denotes left-hand price, and  r_ right-hand or reversed price.
-        l_price = 0  # Price
-        l_precision = 0  # Precision
-        r_price = 0  # Reversed price
-        r_precision = 0  # Reversed price precision
+        # An Orcfax v0 price-feed datum contains the target price-pair
+        # and reversed value. We want to validate against the left hand
+        # target value, so ADA in the case of ADA-USD.
 
-        valid_from = 0  # Valid from
-        valid_through = 0  # Valid through
+        # Price and precision work together to inform us about scientific
+        # notation, e.g. x * 10^-y.
+        l_price = 0  # Price.
+        l_precision = 0  # Precision.
+
         for reference_input in context.tx_info.reference_inputs:
             reference_script = reference_input.resolved.reference_script
-            if isinstance(reference_script, NoScriptHash):  # if this is not a script
+            if isinstance(reference_script, NoScriptHash):  # if this is not a script/
                 reference_input_datum = reference_input.resolved.datum
                 if isinstance(
                     reference_input_datum, SomeOutputDatum
-                ):  # if this is a Datum
+                ):  # if this is a Datum.
                     values = reference_input.resolved.value
                     if any(
                         [
@@ -116,57 +148,26 @@ def validator(
                         auth_policy = True
                         price_feed: PriceFeed = reference_input_datum.datum
                         datum_is_price_feed = True
-
-                        # price_feed_identifier = price_feed.identifier
-                        price_feed_valid_through = price_feed.valid_through.val
-                        # price_feed_signature = price_feed.signature
-
                         price_feed_name: bytes = price_feed.value_dict[b"name"]
                         if price_feed_name == b"ADA-USD|USD-ADA":
                             price_feed_value: List[ValuePair] = price_feed.value_dict[
                                 b"value"
                             ]
-
-                            # read the price
+                            # Read the price.
                             price_feed_value_0: ValuePair = price_feed_value[0]
                             l_precision = price_feed_value_0.precision - uint_64_limit
                             l_price = price_feed_value_0.price
 
-                            # read the reversed price
-                            price_feed_value_1: ValuePair = price_feed_value[1]
-                            r_precision = price_feed_value_1.precision - uint_64_limit
-                            r_price = price_feed_value_1.price
-                            # read valid_from and valid_through
-                            price_feed_value_reference: List[
-                                Anything
-                            ] = price_feed.value_dict[b"valueReference"]
-                            dict_valid_from: Dict[
-                                bytes, Anything
-                            ] = price_feed_value_reference[0]
-                            dict_valid_through: Dict[
-                                bytes, Anything
-                            ] = price_feed_value_reference[1]
-                            valid_from: int = dict_valid_from.get(b"value", 0)
-                            valid_through: int = dict_valid_through.get(b"value", 0)
-                            datum_condition = True
-        # Oracle data must be within a certain validity range. We are
-        # not yet checking for this in the conditions below.
-        validity_range = make_range(price_feed_valid_through, price_feed_valid_through)
-        # Assert that various smart contract conditions are met in order
-        # to let the Tx be processed.
-        assert auth_policy, "Oracle not authenticated!"
-        assert datum_is_price_feed, "Oracle Datum is not a PriceFeed object!"
-        assert datum_condition, "Datum condition is False!"
-        # Finally, fail validation artificially to display the feed
-        # data to users. Users can take this information and convert it
-        # to conditions in their own OpShin smart contracts.
-        assert False, (
-            f"ADA price: {l_price} / precision: {l_precision} "
-            f"| USD price: {r_price} / precision: {r_precision} "
-            f"| valid from: {valid_from} -> valid to: {valid_through}"
-        )
+        # Assert features of this Tx are correct.
+        assert auth_policy, "datum source could not be authenticated!"
+        assert datum_is_price_feed, "oracle Datum is not a PriceFeed object!"
+
+        validate_circuit_breaker(l_precision, l_price)
+
     elif isinstance(redeemer, RefundRedeemer):
-        # Allow the owner key to reclaim the funds anytime.
-        assert datum.source in context.tx_info.signatories, "Refund signature missing!"
+        # Allow the script to be undeployed.
+        assert (
+            datum.source in context.tx_info.signatories
+        ), "the refund signature missing!"
     else:
-        assert False, "wrong redeemer (" + str(salt) + ")"
+        assert False, f"wrong redeemer for this script ({salt})"
