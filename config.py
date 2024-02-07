@@ -3,6 +3,7 @@
 from os import getcwd
 from typing import Final
 
+
 from pycardano import Address, Network, OgmiosChainContext
 
 # Preprod
@@ -41,8 +42,7 @@ policy_id_file: Final[str] = "build/contract/script.policy_id"
 
 stake_derivation_path: Final[str] = "m/1852'/1815'/0'/2/0"
 payment_derivation_path: Final[str] = "m/1852'/1815'/0'/0/0"
-workdir = getcwd()
-base_path = workdir[0 : workdir.find("/src")]
+base_path = getcwd()
 transactions_path = base_path + "/.transactions"
 wallet_path = base_path + "/.wallet"
 mnemonic_file_name = wallet_path + "/phrase.prv"
