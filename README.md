@@ -10,48 +10,38 @@ For further information see:
 
 ## Script background
 
-The latest published datum must be identified off-chain, then the transaction
-must be created and submitted to a node.
+The script allows a claimant to receive a small deposited fee from another
+wallet provided the conditions of the smart contract are met.
 
 The smart contract must check the following:
 
-* the datum was published by the real Oracle (this is true when the UTxO
-contains a token created with the correct minting policy).
-* the datum is still inside the validity period.
-* other checks specific to the DApp using the datum.
+* an Orcfax price-feed datum was published by the real Oracle (this is true when
+the UTxO contains a token created with the correct minting policy).
+* the value of the a price on-chain has not exceeded set boundaries.
+* a small token fee has been paid to collect a deposited value.
+
+The latest published Orcfax datum must be identified off-chain then the
+transaction must be created and submitted to a cardano node.
 
 ### Script status
 
-The current script attempts to show a smart contract workflow using Orcfax data
-but serves primarily to demonstrate how to decode the structure of an Orcfax
-datum and verify some of its details using a OpShin smart-contract.
-
-In this first iteration, instead of completing the transaction, the smart
-contract will "fail" outputting to the user the contents as parsed from
-on-chain. This information can be reworked by others to serve their own smart
-contract needs.
-
-The contract and data structure potentially of most interest to users is under:
-`src/datum-demo-opshin/contract.py`.
-
-## The minting contract in this example
-
-This smart contract (the files are in `src/minting`) is a simple minting
-contract with the purpose of minting the tokens used by the example DApp.
-
-Minting tokens with this smart contract will be possible using a dedicated
-signing key for this purpose.
+The current iteration of this work does not attempt to simulate entirely
+real-world conditions involving multiple wallets. Instead, using Cardano's
+unique qualities every transaction happens between the same wallet. This
+simplifies this demo work by allowing one wallet to be funded. The process
+is repeatable over-and-over again with minimal depletion of funds allowing
+developers to try things out more easily.
 
 ### The DApp contract example using the Datum
 
-This smart contract is used to exchange tokens for ADA at a price published by
-the Oracle, and a fee will be paid for this to a payment address whose hash is
-published in the DApp UTxO Datum. The scripts are in the `src/datum-demo-opshin`
-subfolder.
+The smart contract is used to verify a small fee has been paid and that the
+current price on-chain does not exceed a configured limit. The limit can be
+easily configured so that developers can observe the different behaviors of
+the smart contract.
 
 ## The wallets
 
-For each of the smart contracts, a different payment address is used.
+A single payment address is used throughout the examples.
 
 All the payment addresses are obtained by starting from the same seed phrase,
 using different derivation paths.
@@ -81,24 +71,18 @@ python generate_mnemonic_phrase.py
 
 ### Funding wallets
 
-A preprod wallet will need to be created and funded.
-
-#### Wallet creation
-
-Look at [eternl.io][eternl-1] for wallet creation.
-
-[eternl-1]: https://eternl.io/app/preprod/
+Using `generate_mnemonic_phrase.py` to create a wallet address or see the
+existing address value you can proceed to fund it.
 
 #### Wallet funding
 
-Once you have a preprod wallet, it can be funded from the Cardano
-[Faucet][faucet-1]. Directions on how to use this service can be found on the
-faucet website.
+Given a preprod wallet, it can be funded from the Cardano [Faucet][faucet-1].
+Directions on how to use this service can be found on the faucet website.
 
 [faucet-1]: https://docs.cardano.org/cardano-testnet/tools/faucet/
 
-The funded wallet can then be used to fund the wallets used during the remainder
-of this demo.
+All the funds that are required for this demo will be contained in this
+wallet. In total the wallet only needs about 75 ADA.
 
 #### Funding amounts
 
@@ -106,17 +90,12 @@ The script `generate_mnemonic_phrase.py` will output addresses with feedback
 as follows:
 
 ```text
-payment addr (requires 75 ADA): 'addr_test1qrc...e3'
-collateral addr (requires 5 ADA): 'addr_test1qr6...h6'
-client addr (requires 10 ADA): 'addr_test1qq6...qn'
-exchange client addr: 'addr_test1qp7...wz'
+payment addr (requires ⩾ 75 ADA): 'addr_test1qrc...e3'
 ```
 
 We can see the wallets need to be funded as follows:
 
-* Payment wallet: 75 ADA, 1 UTxO.
-* Collateral wallet: 5 ADA, 1 UTxO.
-* Client wallet: 10 ADA, 1 UTxO.
+* Payment wallet: ⩾ 75 ADA, 1 UTxO.
 
 ## Installing and using the contracts
 
@@ -147,63 +126,53 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements/local.txt
 ```
 
-### Tokens minting contract
+### The Example DApp contract using an Orcfax datum
 
-Before building the contract, we need to know the public key hash of the
-payment key used by the Oracle master node.
+#### tl;dr
 
-It can be displayed by running the `key_hash.py` script from the `src/minting`
-folder:
+The included `Makefile` provides a shortcut for running each of the commands
+below. This helps with repeating the different steps.
 
-```bash
-python key_hash.py
-```
-
-The result is (depending on the wallet seed phrase used):
-
-```text
-2023-10-22T12:50:33Z INFO :: key_hash.py:4:<module>() :: b1ef135fb7f3b8ddff50d69f9ecd659a2f9fb86b973f8ec60ebee479
-```
-
-Given the above output the contract would then be built using the following
-command:
-
-```shell
-opshin build minting contract.py '{"bytes": "b1ef135fb7f3b8ddff50d69f9ecd659a2f9fb86b973f8ec60ebee479"}'
-```
-
-The build files will be found in the `build/contract` subfolder.
-
-Now the contract can be used to mint the tokens by running:
-
-```shell
-python mint.py
-```
-
-The token name (`SuperDexToken`) is set in `config.py`.
-
-The amount of tokens to be minted is set to 1 Billion with 6 decimals in
-`config.py`, and the tokens will be minted into the `client_address` payment
-address from `library.py` (the address is also displayed when running the
-script).
-
-If you didn't retrieve the minting policy and update the smart contract config
-at minting, use `make get-minting-policy` to retrieve the minting policy ID.
-It will need to be added to `datum-demo-opshin/config.py` replacing the current
-`POLICY_ID`.
-
-To run the script:
+In order, you will want to do the following:
 
 ```sh
-make get-minting-policy
+make build-contract
+make deploy-contract
+make deposit-funds
+make claim-funds
+make undeploy-contract
 ```
 
-#### Cleaning up - reclaiming the tokens
+The `deposit` and `claim` commands can be run as many times as you would like.
+The `claim.py` script might, for example, be modified to edit the transaction
+metadata to output something different. Run those with:
 
-To burn the tokens and claim back the stored value run the script `burn.py`.
-See "Resetting oracle DApp" [below](#resetting-dapp-state).
+```sh
+make deposit-funds
+make claim-funds
+```
 
-### The Example DApp contract using the Datum
+> Note: with the added convenience, make sure to leave ~30-60 seconds between
+> commands to make sure all the transactions have made it on-chain. Given any
+> errors, just run the command again.
+>
+> additionally: if funds are deposited without being claimed, run
+> `make refund-deposit` to claim that value back.
+
+`make` can be run to view more information:
+
+```text
+build-contract                 Build the Oracle smart contract.
+claim-funds                    Claim the deposited funds.
+deploy-contract                Deploy the Oracle smart contract.
+deposit-funds                  Deposit funds to be claimed.
+help                           Print this help message.
+lint-contract                  Lint the smart contract.
+refund-deposit                 Refund deposited funds.
+undeploy-contract              Un-deploy the Oracle smart contract.
+```
+
+##### Full DApp instructions
 
 The DApp contract can be built by running:
 
@@ -220,16 +189,25 @@ python 01.deploy.py
 
 The script output looks like this:
 
+<!-- markdownlint-disable -->
+
 ```text
-2023-10-22T12:18:53Z INFO :: 01.deploy.py:14:main() :: Script deployer address: addr_test1qzc77y6lklem3h0l2rtfl8kdvkdzl8acdwtnlrkxp6lwg7fcrzagkyjjgk4pr8yefs3klu8q3xlfhyhhgphefqvfgv4q6casrv
-2023-10-22T12:18:53Z INFO :: 01.deploy.py:15:main() :: Script address: addr_test1wpst9j7l3qu99gfwzwlvqd6c3ujj8c087k8a62tqnfy7wls89sexm
-2023-10-22T12:18:53Z INFO :: 01.deploy.py:16:main() :: Fee address PKH: b1ef135fb7f3b8ddff50d69f9ecd659a2f9fb86b973f8ec60ebee479
-2023-10-22T12:18:53Z INFO :: 01.deploy.py:27:main() :: Creating the transaction...
-2023-10-22T12:18:53Z INFO :: 01.deploy.py:31:main() :: Signing the transaction...
-2023-10-22T12:18:55Z INFO :: 01.deploy.py:33:main() :: 71eed288aa29df2653c6b93678d529e1b008f6d63a577e4a080824621f2547ea
-2023-10-22T12:18:55Z INFO :: 01.deploy.py:35:main() :: Submitting the transaction...
-2023-10-22T12:18:56Z INFO :: 01.deploy.py:37:main() :: Done.
+2024-02-08T15:17:53Z INFO :: 01.deploy.py:32:deploy_contract() :: script deployer address: addr_test1qq9tjzu93xw6dt4d3prx8g8w9mnfwf3nd83aqh36y2rnae53k0r4s5fvwhelthchhx785kmxaw3eesnsxdh74k8ksgvqwwgvpy
+2024-02-08T15:17:53Z INFO :: 01.deploy.py:33:deploy_contract() :: script address: addr_test1wqzxql6x07lufr2ld5dhq7e0k27zdj4e346fd280p2dr43cf6e3r6
+2024-02-08T15:17:53Z INFO :: 01.deploy.py:34:deploy_contract() :: fee address derived from payment address: addr1vy9tjzu93xw6dt4d3prx8g8w9mnfwf3nd83aqh36y2rnaes40kfsz
+2024-02-08T15:17:53Z INFO :: 01.deploy.py:38:deploy_contract() :: fee address PKH: 0ab90b85899da6aead884663a0ee2ee697263369e3d05e3a22873ee6
+2024-02-08T15:17:53Z INFO :: 01.deploy.py:42:deploy_contract() :: creating the transaction...
+2024-02-08T15:17:53Z INFO :: 01.deploy.py:50:deploy_contract() :: signing the transaction...
+2024-02-08T15:17:55Z INFO :: 01.deploy.py:54:deploy_contract() :: signed tx id: 53af2ab19fe2d80a02296508a48c329b5c751c35a84e08027a6270a47f690148
+2024-02-08T15:17:55Z INFO :: library.py:55:save_transaction() :: saving Tx to: tx_client_deploy.signed , inspect with: 'cardano-cli transaction view --tx-file tx_client_deploy.signed'
+2024-02-08T15:17:55Z INFO :: 01.deploy.py:56:deploy_contract() :: submitting the transaction...
+2024-02-08T15:17:56Z INFO :: library.py:82:submit_and_log_tx() :: fee 0.419205 ADA
+2024-02-08T15:17:56Z INFO :: library.py:86:submit_and_log_tx() :: output 70.0 ADA
+2024-02-08T15:17:56Z INFO :: library.py:90:submit_and_log_tx() :: transaction submitted: https://preprod.cexplorer.io/tx/53af2ab19fe2d80a02296508a48c329b5c751c35a84e08027a6270a47f690148
+2024-02-08T15:17:56Z INFO :: 01.deploy.py:58:deploy_contract() :: done
 ```
+
+<!-- markdownlint-enable -->
 
 From the wallets that we have already funded, the contract owner or user
 (the `client`) needs to deposit an amount of ADA (and tokens) to the contract
@@ -248,60 +226,110 @@ The script will output some logging that may be useful in debugging if at all
 necessary, e.g. the publisher address can be queried to ensure that it is funded
 correctly, and the smart contract address to ensure that it is on-chain.
 
+<!-- markdownlint-disable -->
+
 ```text
-2023-10-22T12:18:59Z INFO :: 02.deposit.py:8:main() :: Publisher address:    addr_test1qqw9456ez30pua6jqr8l8r86y2ygrqqyg2q73uxe3dyj3upcrzagkyjjgk4pr8yefs3klu8q3xlfhyhhgphefqvfgv4qzxpvw5
-2023-10-22T12:18:59Z INFO :: 02.deposit.py:9:main() :: Script address:       addr_test1wpst9j7l3qu99gfwzwlvqd6c3ujj8c087k8a62tqnfy7wls89sexm
-2023-10-22T12:18:59Z INFO :: 02.deposit.py:20:main() :: Creating the transaction...
-2023-10-22T12:18:59Z INFO :: 02.deposit.py:38:main() :: Signing the transaction...
-2023-10-22T12:19:01Z INFO :: 02.deposit.py:40:main() :: 277721a895066e5a4c6e7b863bca6fc565c2d8015ab5a2456ac2e8f881d21fcd
-2023-10-22T12:19:01Z INFO :: 02.deposit.py:42:main() :: Submitting the transaction...
-2023-10-22T12:19:02Z INFO :: 02.deposit.py:44:main() :: Done.
+2024-02-08T15:18:46Z INFO :: 02.deposit.py:29:deposit_value() :: script address: addr_test1wqzxql6x07lufr2ld5dhq7e0k27zdj4e346fd280p2dr43cf6e3r6
+2024-02-08T15:18:46Z INFO :: 02.deposit.py:30:deposit_value() :: fee address: addr_test1vq9tjzu93xw6dt4d3prx8g8w9mnfwf3nd83aqh36y2rnaesw8z4l8
+2024-02-08T15:18:46Z INFO :: 02.deposit.py:36:deposit_value() :: creating the transaction...
+2024-02-08T15:18:46Z INFO :: 02.deposit.py:43:deposit_value() :: signing the transaction...
+2024-02-08T15:18:48Z INFO :: 02.deposit.py:47:deposit_value() :: signed tx id: 5a53a680cf631786f872d53351429e828e513a0e4b7ca16ce680d8ba891970d7
+2024-02-08T15:18:48Z INFO :: library.py:55:save_transaction() :: saving Tx to: tx_client_deposit.signed , inspect with: 'cardano-cli transaction view --tx-file tx_client_deposit.signed'
+2024-02-08T15:18:48Z INFO :: library.py:82:submit_and_log_tx() :: fee 0.170253 ADA
+2024-02-08T15:18:48Z INFO :: library.py:86:submit_and_log_tx() :: output 2.0 ADA
+2024-02-08T15:18:48Z INFO :: library.py:90:submit_and_log_tx() :: transaction submitted: https://preprod.cexplorer.io/tx/5a53a680cf631786f872d53351429e828e513a0e4b7ca16ce680d8ba891970d7
 ```
 
-The claiming part is still work in progress and is not working yet.
+<!-- markdownlint-emable -->
 
-The beneficiary will eventually be able to claim the funds by running:
+The beneficiary can claim the funds by running:
 
 ```shell
 python 03.claim.py
 ```
 
-The script output will look something like as follows:
-
 <!-- markdownlint-disable -->
 
 ```text
-2023-10-22T12:30:20Z ERROR :: 03.claim.py:127:claim_script() :: signing tx failed: {'EvaluationFailure': {'ScriptFailures': {'spend:0': [{'validatorFailed': {'error': "An error has occurred:  User error:\nThe machine terminated because of an error, either from a built-in function or from an explicit use of 'error'.", 'traces': ['ADA price: 3691 / precision: -4 | USD price: 270929287455974 / precision: -14 | valid from: 1700579517301 -> valid to: 1700583237301']}}]}}}
-```
+2024-02-08T15:20:05Z INFO :: 03.claim.py:94:claim_script() :: script address: addr_test1wqzxql6x07lufr2ld5dhq7e0k27zdj4e346fd280p2dr43cf6e3r6
+2024-02-08T15:20:05Z INFO :: 03.claim.py:95:claim_script() :: entering this script...
+2024-02-08T15:20:05Z INFO :: 03.claim.py:96:claim_script() :: script address: addr_test1wqzxql6x07lufr2ld5dhq7e0k27zdj4e346fd280p2dr43cf6e3r6
+2024-02-08T15:20:05Z INFO :: 03.claim.py:97:claim_script() :: oracle smart contract: addr_test1wrtcecfy7np3sduzn99ffuv8qx2sa8v977l0xql8ca7lgkgmktuc0
+2024-02-08T15:20:05Z INFO :: 03.claim.py:98:claim_script() :: payment address: addr_test1qq9tjzu93xw6dt4d3prx8g8w9mnfwf3nd83aqh36y2rnae53k0r4s5fvwhelthchhx785kmxaw3eesnsxdh74k8ksgvqwwgvpy
+2024-02-08T15:20:07Z INFO :: library.py:254:get_latest_utxo() :: inspecting '942' UTxOs
+2024-02-08T15:20:07Z INFO :: library.py:222:decode_utxo() ::
 
-This is expected in the early version of this script to demonstrate to you the
-process of accessing the data in the datum. The values are presented in the
-error trace. These can be more easily read below:
-
-```json
-{'EvaluationFailure':
-   {'ScriptFailures':
-      {'spend:0':
-         [
-            {'validatorFailed':
-               {'error': "An error has occurred:  User error:\nThe machine terminated because of an error, either from a built-in function or from an explicit use of 'error'.", 'traces':
-                  ['ADA price: 3691 / precision: -4 | USD price: 270929287455974 / precision: -14 | valid from: 1700579517301 -> valid to: 1700583237301']
-                }
-            }
-         ]
-      }
-   }
+{
+  "@context": "https://schema.org",
+  "type": "PropertyValue",
+  "name": "ADA-USD|USD-ADA",
+  "value": [
+    0.4813,
+    2.077706212341575
+  ],
+  "valueReference": [
+    {
+      "@type": "PropertyValue",
+      "name": "validFrom",
+      "value": 1707298229100
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "validThrough",
+      "value": 1707301949100
+    }
+  ],
+  "identifier": {
+    "propertyID": "Arkly Identifier",
+    "type": "PropertyValue",
+    "value": "urn:orcfax:e9c5f7c9-cb20-49dd-be1e-a91e57b27a14"
+  },
+  "_:contentSignature": "6185adc926c7278468a7e412ce7b988958a1d60c4884e63ce491d2fe56a7a999"
 }
+
+2024-02-08T15:20:07Z INFO :: library.py:223:decode_utxo() :: oracle datum identifier (internal): b'04CA0001HP1EF6KASSJWFXRSD7RSEZRQ'
+2024-02-08T15:20:07Z INFO :: library.py:228:decode_utxo() :: oracle datum timestamp: 2024-02-07T10:32:29Z (1707301949100)
+2024-02-08T15:20:07Z INFO :: library.py:240:pretty_log_value() :: ADA-USD: 0.4813
+2024-02-08T15:20:07Z INFO :: library.py:240:pretty_log_value() :: USD-ADA: 2.077706212341575
+2024-02-08T15:20:08Z INFO :: 03.claim.py:112:claim_script() :: building transaction...
+2024-02-08T15:20:11Z INFO :: 03.claim.py:149:claim_script() :: signing the transaction...
+2024-02-08T15:20:14Z INFO :: 03.claim.py:153:claim_script() :: tx signed
+2024-02-08T15:20:14Z INFO :: 03.claim.py:154:claim_script() :: signed tx id: 1675d30048bcd8328b57cbc8e79049cfaf27b0c3b25402f1a1f580ceb542db1f
+2024-02-08T15:20:14Z INFO :: library.py:55:save_transaction() :: saving Tx to: tx_claim.signed , inspect with: 'cardano-cli transaction view --tx-file tx_claim.signed'
+2024-02-08T15:20:14Z INFO :: 03.claim.py:156:claim_script() :: submitting the transaction...
+2024-02-08T15:20:14Z INFO :: library.py:82:submit_and_log_tx() :: fee 0.267751 ADA
+2024-02-08T15:20:14Z INFO :: library.py:86:submit_and_log_tx() :: output 1.0 ADA
+2024-02-08T15:20:14Z INFO :: library.py:90:submit_and_log_tx() :: transaction submitted: https://preprod.cexplorer.io/tx/1675d30048bcd8328b57cbc8e79049cfaf27b0c3b25402f1a1f580ceb542db1f
+2024-02-08T15:20:14Z INFO :: 03.claim.py:158:claim_script() :: done
 ```
 
 <!-- markdownlint-enable -->
 
-#### Cleaning up - reclaiming the deposit
+If this script is successful a transaction URL will be output and can be
+explored on preprod cexplorer, for example: [here][cexplorer-1].
+
+The appearance of cexplorer may vary, but it should still be possible to
+explore the transaction.
+
+It is recommended to look at the following:
+
+* metadata, it will show information about the transaction and on-chain data
+used to build this transaction.
+* reference inputs, these can be followed back to the original datum used to
+build and validate this transaction.
+
+![Example transaction of CExplorer](docs/images/cexplorer-example.jpg)
+
+[cexplorer-1]: https://preprod.cexplorer.io/tx/1a6759fdfddb07e18061a2ddc27351443e70b717bb8208d5b8da4e9f6a8fa09b#data
+
+<!-- markdownlint-enable -->
+
+##### Cleaning up - reclaiming the deposit
 
 The funds can be claimed back (refunded) and the smart contract removed from
 on-chain. See "Resetting oracle DApp" [below](#resetting-dapp-state).
 
-### Resetting DApp state
+##### Resetting DApp state
 
 To reset the state established by the scripts here, e.g. to help debugging and
 script development, the minting and claim scripts need to reclaim their value
@@ -309,11 +337,11 @@ and be undeployed.
 
 We work backwards to do this, working first from the oracle based DApp.
 
-#### Resetting oracle DApp
+##### Resetting oracle DApp
 
 <!-- markdownlint-disable -->
 
-1. From the `demo-datum-opshin` folder refund the value:
+1. if funds haven't been claimed using the claim script:
 
 ```sh
 python refund.py
@@ -327,10 +355,20 @@ python 04.undeploy.py
 
 <!-- markdownlint-enable -->
 
-#### Reset minting state
+## For developers
 
-1. From the minting folder, burn the tokens:
+Developing on this solution should be easy enough. Start by looking at the
+smart contract and thinking about changing the circuit breaker value:
 
-```sh
-python burn.py
-```
+* [smart-contract](contract.py).
+
+And then looking at the claim script to start modifying data being used
+off-chain:
+
+* [claim script](03.claim.py).
+
+To start turning this into something simulating real-life, developers will want
+to start looking at parameterizing the wallets used in these examples. They will
+also want to look at making greater use of the data available to them in the
+datum, as well as accessing additional reference inputs, perhaps feeding into
+the script different circuit breaker values and other off-chain values.

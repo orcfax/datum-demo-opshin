@@ -4,27 +4,10 @@ import json
 import logging
 import sys
 from collections import OrderedDict
-from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 
 import cbor2
 import numpy
-import requests
-from config import (
-    ADA_USD_ORACLE_ADDR,
-    ADDRESSES_COUNT,
-    AUTH_POLICY,
-    PLUTUS_CHAIN_INDEX_API,
-    auth_addr,
-    context,
-    contract_script_file,
-    mnemonic_file_name,
-    network,
-    payment_derivation_path,
-    policy_id_file,
-    stake_derivation_path,
-    tx_template,
-)
 from pycardano import (
     Address,
     ExtendedSigningKey,
@@ -36,6 +19,19 @@ from pycardano import (
     StakeExtendedVerificationKey,
     Transaction,
     UTxO,
+)
+
+from config import (
+    ADA_USD_ORACLE_ADDR,
+    ADDRESSES_COUNT,
+    AUTH_POLICY,
+    context,
+    contract_script_file,
+    mnemonic_file_name,
+    network,
+    payment_derivation_path,
+    stake_derivation_path,
+    tx_template,
 )
 
 logging.basicConfig(
@@ -52,21 +48,6 @@ def get_contract_script() -> PlutusV2Script:
     with open(contract_script_file, "r", encoding="utf-8") as f:
         script_hex = f.read().strip()
     return PlutusV2Script(bytes.fromhex(script_hex))
-
-
-def get_policy_ud() -> str:
-    """Read the policy_id from disk."""
-    with open(policy_id_file, "r", encoding="utf-8") as f:
-        policy_id = f.read().strip()
-    return policy_id
-
-
-@dataclass
-class PricePair:
-    """Stores our values."""
-
-    ada_usd: int
-    usd_ada: int
 
 
 def save_transaction(trans: Transaction, file: str):
@@ -235,11 +216,10 @@ def decode_utxo(utxo: UTxO):
     """Split a UTxO into the components that we need to process and
     initially return the Orcfax Datum."""
     oracle_datum = cbor2.loads(utxo.output.datum.cbor)
-    # datum value full -- oracle_datum.value
     json_datum = oracle_datum.value[0]
     json_datum = decode_datum_bytes(json_datum)
-    # json_datum = _recombine_datum(json_datum)
-    # logger.info("\n\n%s\n", json.dumps(json_datum, indent=2))
+    json_datum = _recombine_datum(json_datum)
+    logger.info("\n\n%s\n", json.dumps(json_datum, indent=2))
     logger.info("oracle datum identifier (internal): %s", oracle_datum.value[1])
     timestamp = oracle_datum.value[2].value[0]
     timestamp_human = datetime.utcfromtimestamp(int(timestamp) / 1000).strftime(
@@ -249,10 +229,9 @@ def decode_utxo(utxo: UTxO):
     labels = oracle_datum.value[0][b"name"].decode().split("|", 1)
     ada_usd_value = oracle_datum.value[0][b"value"][0].value
     usd_ada_value = oracle_datum.value[0][b"value"][1].value
-    price_pair = PricePair(ada_usd=ada_usd_value, usd_ada=usd_ada_value)
     pretty_log_value(ada_usd_value, labels[0])
     pretty_log_value(usd_ada_value, labels[1])
-    return price_pair
+    return json_datum
 
 
 def pretty_log_value(value_pair: cbor2.CBORTag, label: str):
@@ -261,54 +240,12 @@ def pretty_log_value(value_pair: cbor2.CBORTag, label: str):
     logger.info("%s: %s", label, value)
 
 
-def get_tx_info(tx_id: str):
-    """Return the transaction information from the plutus chain index api"""
-    data = {"getTxId": tx_id}
-    headers = {"Content-type": "application/json"}
-    try:
-        tx_info = json.loads(
-            requests.post(
-                PLUTUS_CHAIN_INDEX_API, json=data, headers=headers, timeout=30
-            ).text
-        )
-    except Exception as exc:  # pylint: disable=W0718
-        logger.exception(exc)
-        tx_info = None
-    return tx_info
-
-
-def validate_utxo(utxo: UTxO):
+def validate_utxo(utxo: UTxO) -> bool:
     """check if the token included in the utxo is the correct one."""
-    logger.info("inspecting the utxo for valid auth tokens")
-    valid = False
-    last_tx_info = get_tx_info(str(utxo.input.transaction_id))
-    last_tx_inputs = last_tx_info["_citxInputs"]
-    inputs = {}
-    # find out the inputs of the last publish transaction
-    for item in last_tx_inputs:
-        tx_id = item["txInRef"]["txOutRefId"]["getTxId"]
-        index = item["txInRef"]["txOutRefIdx"]
-        if tx_id not in inputs:
-            inputs[tx_id] = [index]
-        else:
-            inputs[tx_id].append(index)
-    # find out the addresses where the inputs are consumed from
-    for tx_id, indices in inputs.items():
-        tx_info = get_tx_info(tx_id)
-        tx_outputs = tx_info["_citxOutputs"]
-        for index in indices:
-            # if the input is from the AUTH address
-            if tx_outputs["contents"][index]["address"]["addressCredential"][
-                "contents"
-            ]["getPubKeyHash"] == str(auth_addr.payment_part):
-                for value in tx_outputs["contents"][index]["value"]["getValue"]:
-                    # if the token policy is the auth_policy (which doesn't change)
-                    if value[0]["unCurrencySymbol"] == AUTH_POLICY:
-                        valid = True
-                        logger.info(
-                            "the utxo is valid, it contains the correct auth token"
-                        )
-    return valid
+    for item in utxo.output.amount.multi_asset:
+        if str(item) == AUTH_POLICY:
+            return True
+    return False
 
 
 def get_latest_utxo(oracle_addr: str):
@@ -317,10 +254,14 @@ def get_latest_utxo(oracle_addr: str):
     logger.info("inspecting '%s' UTxOs", len(oracle_utxos))
     latest_timestamp = 0
     latest_utxo = None
+    latest_utxos = []
     for utxo in oracle_utxos:
         if utxo.output.script or not utxo.output.datum:
             continue
-
+        if not validate_utxo(utxo):
+            continue
+        latest_utxos.append(utxo)
+    for utxo in latest_utxos:
         oracle_datum = cbor2.loads(utxo.output.datum.cbor)
         try:
             timestamp = oracle_datum.value[2].value[0]
@@ -329,25 +270,7 @@ def get_latest_utxo(oracle_addr: str):
                 latest_utxo = utxo
         except IndexError:
             pass
-    time_now = datetime.now(timezone.utc)
-    datum_timestamp = datetime.fromtimestamp(
-        latest_timestamp / 1000
-    )  # convert to seconds from milliseconds.
-    time_diff = (
-        (
-            time_now.replace(tzinfo=None) - datum_timestamp.replace(tzinfo=None)
-        ).total_seconds()
-        / 60
-        / 60
-    )
-    diff_hours = f"{time_diff:.2f}"  # 2 decimal places.
-    if time_diff > 1:
-        logger.warning(
-            "'%s' hours since datum was published (%s)", diff_hours, latest_timestamp
-        )
-    if validate_utxo(latest_utxo):
-        return latest_utxo
-    return None
+    return latest_utxo
 
 
 def read_datum():
@@ -363,19 +286,6 @@ def read_datum():
 
 
 wallets = wallet_from_mnemonic(mnemonic_file_name, ADDRESSES_COUNT)
-
 payment_address: Address = wallets[0]["addr"]
 payment_skey: PaymentExtendedSigningKey = wallets[0]["skey"]
 payment_vkey: PaymentExtendedVerificationKey = wallets[0]["vkey"]
-
-collateral_address: Address = wallets[1]["addr"]
-collateral_skey: PaymentExtendedSigningKey = wallets[1]["skey"]
-collateral_vkey: PaymentExtendedVerificationKey = wallets[1]["vkey"]
-
-client_address: Address = wallets[2]["addr"]
-client_skey: PaymentExtendedSigningKey = wallets[2]["skey"]
-client_vkey: PaymentExtendedVerificationKey = wallets[2]["vkey"]
-
-exchange_client_address: Address = wallets[3]["addr"]
-exchange_client_skey: PaymentExtendedSigningKey = wallets[3]["skey"]
-exchange_client_vkey: PaymentExtendedVerificationKey = wallets[3]["vkey"]

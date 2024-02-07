@@ -40,16 +40,23 @@
     "files.eol": "\n",
     "cSpell.words": [
         "cardano",
+        "cbor",
         "cexplorer",
+        "claimables",
         "hexlify",
+        "mnem",
         "OGMIOS",
         "opshin",
+        "parameterizing",
         "pkey",
         "preprod",
         "pycardano",
+        "significand",
+        "skey",
         "undeployed",
         "utxo",
         "utxos",
+        "vkey",
         "wlts",
         "workdir"
     ]
