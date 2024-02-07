@@ -34,20 +34,20 @@ def deploy_contract():
     deployer_skey = payment_skey
     fee_address = payment_address.payment_part.to_primitive()
 
-    logger.info("Script deployer address: %s", payment_address)
-    logger.info("Script address: %s", script_address)
+    logger.info("script deployer address: %s", payment_address)
+    logger.info("script address: %s", script_address)
     logger.info(
-        "Fee address derived from payment address: %s",
+        "fee address derived from payment address: %s",
         Address(payment_address.payment_part),
     )
-    logger.info("Fee address PKH: %s", binascii.hexlify(fee_address).decode())
+    logger.info("fee address PKH: %s", binascii.hexlify(fee_address).decode())
 
     script_value = Value(70000000)
 
     fee = 1000000
     datum = PublishParams(source=deployer, fee_address=fee_address, fee=fee)
 
-    logger.info("Creating the transaction...")
+    logger.info("creating the transaction...")
     transaction = TransactionBuilder(context)
     transaction.add_input_address(deployer_address)
     transaction.add_output(
@@ -55,7 +55,7 @@ def deploy_contract():
             script_address, amount=script_value, datum=datum, script=contract_script
         )
     )
-    logger.info("Signing the transaction...")
+    logger.info("signing the transaction...")
     try:
         signed_tx = transaction.build_and_sign(
             [deployer_skey], change_address=deployer_address
@@ -65,9 +65,9 @@ def deploy_contract():
         sys.exit(1)
     logger.info(signed_tx.id)
     save_transaction(signed_tx, "tx_client_deploy.signed")
-    logger.info("Submitting the transaction...")
+    logger.info("submitting the transaction...")
     submit_and_log_tx(signed_tx)
-    logger.info("Done.")
+    logger.info("done")
 
 
 def main():

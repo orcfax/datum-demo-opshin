@@ -12,7 +12,7 @@ from opshin.ledger.interval import *  # pylint ignore=W0401
 
 
 # policy ID of the Oracle AUTH tokens
-# auth_policy_id = '104d51dd927761bf5d50d32e1ede4b2cff477d475fe32f4f780a4b21'
+# hex = '104d51dd927761bf5d50d32e1ede4b2cff477d475fe32f4f780a4b21'
 policy_id = b"\x10MQ\xdd\x92wa\xbf]P\xd3.\x1e\xdeK,\xffG}G_\xe3/Ox\nK!"
 
 # Unsigned integer limit.
@@ -168,6 +168,6 @@ def validator(
         # Allow the script to be undeployed.
         assert (
             datum.source in context.tx_info.signatories
-        ), "the refund signature missing!"
+        ), f"the refund signature '{datum.source}' missing!"
     else:
         assert False, f"wrong redeemer for this script ({salt})"

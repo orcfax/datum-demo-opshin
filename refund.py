@@ -5,12 +5,9 @@ import sys
 from config import context, network
 from contract import RefundRedeemer  # pylint: disable=E0611
 from library import (
-    client_address,
-    client_skey,
-    client_vkey,
-    collateral_address,
-    collateral_skey,
-    collateral_vkey,
+    payment_address,
+    payment_skey,
+    payment_vkey,
     get_contract_script,
     logger,
     save_transaction,
@@ -25,6 +22,7 @@ def refund_tokens():
     script_hash = plutus_script_hash(contract_script)
     script_address = Address(script_hash, network=network)
     logger.info("script address: %s", script_address)
+    logger.info("refund address: %s", payment_address)
 
     script_utxos = context.utxos(str(script_address))
     sc_utxo = None
@@ -43,21 +41,28 @@ def refund_tokens():
         logger.warning("no utxo to refund!")
         sys.exit(0)
 
-    collateral_utxo = context.utxos(str(collateral_address))[0]
+    collateral_address = payment_address
+    collateral_amount: Final[int] = 3607615
+    collateral_utxos = context.utxos(str(collateral_address))
+    collateral_utxo = None
+    for collateral in collateral_utxos:
+        if int(collateral.output.amount.coin) > collateral_amount:
+            collateral_utxo = collateral
+            break
+
     redeemer = Redeemer(RefundRedeemer())
 
-    logger.info("Creating the transaction...")
+    logger.info("creating the transaction...")
     transaction = TransactionBuilder(context)
     transaction.reference_inputs.add(sc_utxo)
     transaction.add_script_input(utxo_to_spend, redeemer=redeemer)
-    # transaction.add_script_input(utxo_to_spend, redeemer=redeemer, script=contract_script)
     transaction.collaterals.append(collateral_utxo)
-    transaction.required_signers = [client_vkey.hash(), collateral_vkey.hash()]
+    transaction.required_signers = [payment_vkey.hash()]
     transaction.validity_start = context.last_block_slot
     transaction.ttl = transaction.validity_start + 3600
-    logger.info("Signing the transaction...")
+    logger.info("signing the transaction...")
     signed_tx = transaction.build_and_sign(
-        [client_skey, collateral_skey], change_address=client_address
+        [payment_skey], change_address=payment_address
     )
     logger.info(signed_tx.id)
     save_transaction(signed_tx, "tx_client_refund.signed")

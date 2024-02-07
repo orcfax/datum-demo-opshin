@@ -18,14 +18,19 @@ def output_addresses(wallets: dict) -> None:
     # here.
 
     payment_address: pycardano.Address = wallets[0]["addr"]
-    collateral_address: pycardano.Address = wallets[1]["addr"]
-    client_address: pycardano.Address = wallets[2]["addr"]
-    exchange_client_address: pycardano.Address = wallets[3]["addr"]
+    # collateral_address: pycardano.Address = wallets[1]["addr"]
+    # client_address: pycardano.Address = wallets[2]["addr"]
+    # exchange_client_address: pycardano.Address = wallets[3]["addr"]
 
-    print(f"payment addr (requires 75 ADA): '{payment_address}'")
-    print(f"collateral addr (requires 5 ADA): '{collateral_address}'")
-    print(f"client addr (requires 10 ADA): '{client_address}'")
-    print(f"exchange client addr: '{exchange_client_address}'")
+    preprod_faucet: Final[
+        str
+    ] = "addr_test1qqr585tvlc7ylnqvz8pyqwauzrdu0mxag3m7q56grgmgu7sxu2hyfhlkwuxupa9d5085"
+
+    print(f"payment addr (requires ⩾ 75 ADA): '{payment_address}'")
+    print("")
+    print(
+        f"when you have finished with your ADA, consider returning it to the preprod faucet: {preprod_faucet}"
+    )
     print("")
 
 
@@ -39,7 +44,7 @@ def derive_wallet_info(mnemonic: str) -> dict:
         staking_part=stk_vkey.hash(), network=pycardano.Network.TESTNET
     )
     wallets = {}
-    for i in range(4):
+    for i in range(1):
         payment = hdw.derive_from_path(payment_derivation_path[0:-1] + str(i))
         p_skey = pycardano.ExtendedSigningKey.from_hdwallet(payment)
         p_vkey = pycardano.PaymentExtendedVerificationKey.from_signing_key(p_skey)

@@ -7,15 +7,8 @@ import sys
 import cbor2
 from config import ADA_USD_ORACLE_ADDR, context, network
 from contract import HelloWorldRedeemer, PublishParams
-from datetime import datetime, timezone
-from typing import final
+from datetime import datetime
 from library import (
-    client_address,
-    client_skey,
-    client_vkey,
-    collateral_address,
-    collateral_skey,
-    collateral_vkey,
     decode_utxo,
     get_contract_script,
     get_latest_utxo,
@@ -115,25 +108,8 @@ def claim_script():
         logger.warning("no utxo to claim!")
         sys.exit(0)
 
-    # logger.info("collateral address: %s", collateral_address)
     logger.info("script address: %s", script_address)
-    logger.info("client address: %s", client_address)
     logger.info("payment address: %s", payment_address)
-
-    ## BUILD THE TRANSACTION...
-    ## BUILD THE TRANSACTION...
-    ## BUILD THE TRANSACTION...
-    ## BUILD THE TRANSACTION...
-
-    ## BUILD THE TRANSACTION...
-    ## BUILD THE TRANSACTION...
-    ## BUILD THE TRANSACTION...
-    ## BUILD THE TRANSACTION...
-
-    ## BUILD THE TRANSACTION...
-    ## BUILD THE TRANSACTION...
-    ## BUILD THE TRANSACTION...
-    ## BUILD THE TRANSACTION...
 
     transaction = TransactionBuilder(context)
     for item in context.utxos(str(payment_address)):
@@ -155,13 +131,11 @@ def claim_script():
             )
         )
 
-    # here seems to be the error...
-    # transaction.add_script_input(utxo_to_spend, redeemer=Redeemer(HelloWorldRedeemer()))
-
     # Add collateral to cover the cost of the validating node executing
     # a failing script
+    collateral_address = payment_address
     collateral_amount: Final[int] = 3607615
-    collateral_utxos = context.utxos(str(payment_address))
+    collateral_utxos = context.utxos(str(collateral_address))
     collateral_utxo = None
     for collateral in collateral_utxos:
         if int(collateral.output.amount.coin) > collateral_amount:
@@ -169,8 +143,6 @@ def claim_script():
             break
 
     transaction.collaterals.append(collateral_utxo)
-    # transaction.required_signers = [client_vkey.hash(), collateral_vkey.hash()]
-
     transaction.required_signers = [payment_vkey.hash()]
     transaction.validity_start = context.last_block_slot
     transaction.ttl = transaction.validity_start + 3600
@@ -180,23 +152,8 @@ def claim_script():
         AlonzoMetadata(metadata=Metadata(tx_metadata))
     )
 
-    # SIGN THE TX
-    # SIGN THE TX
-    # SIGN THE TX
-
-    # SIGN THE TX
-    # SIGN THE TX
-    # SIGN THE TX
-
-    # SIGN THE TX
-    # SIGN THE TX
-    # SIGN THE TX
-
     logger.info("signing the transaction...")
     try:
-        # signed_tx = transaction.build_and_sign(
-        #    [client_skey, collateral_skey], change_address=client_address
-        # )
         signed_tx = transaction.build_and_sign(
             [payment_skey], change_address=payment_address
         )
@@ -208,10 +165,8 @@ def claim_script():
     logger.info(signed_tx.id)
     save_transaction(signed_tx, "tx_claim.signed")
     logger.info("submitting the transaction...")
-
     submit_and_log_tx(signed_tx)
-
-    logger.info("Done.")
+    logger.info("done")
 
 
 def main():

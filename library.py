@@ -14,13 +14,11 @@ from config import (
     ADA_USD_ORACLE_ADDR,
     ADDRESSES_COUNT,
     AUTH_POLICY,
-    PLUTUS_CHAIN_INDEX_API,
     context,
     contract_script_file,
     mnemonic_file_name,
     network,
     payment_derivation_path,
-    policy_id_file,
     stake_derivation_path,
     tx_template,
 )
@@ -51,14 +49,6 @@ def get_contract_script() -> PlutusV2Script:
     with open(contract_script_file, "r", encoding="utf-8") as f:
         script_hex = f.read().strip()
     return PlutusV2Script(bytes.fromhex(script_hex))
-
-
-@dataclass
-class PricePair:
-    """Stores our values."""
-
-    ada_usd: int
-    usd_ada: int
 
 
 def save_transaction(trans: Transaction, file: str):
@@ -240,7 +230,6 @@ def decode_utxo(utxo: UTxO):
     labels = oracle_datum.value[0][b"name"].decode().split("|", 1)
     ada_usd_value = oracle_datum.value[0][b"value"][0].value
     usd_ada_value = oracle_datum.value[0][b"value"][1].value
-    price_pair = PricePair(ada_usd=ada_usd_value, usd_ada=usd_ada_value)
     pretty_log_value(ada_usd_value, labels[0])
     pretty_log_value(usd_ada_value, labels[1])
     return json_datum
@@ -298,19 +287,6 @@ def read_datum():
 
 
 wallets = wallet_from_mnemonic(mnemonic_file_name, ADDRESSES_COUNT)
-
 payment_address: Address = wallets[0]["addr"]
 payment_skey: PaymentExtendedSigningKey = wallets[0]["skey"]
 payment_vkey: PaymentExtendedVerificationKey = wallets[0]["vkey"]
-
-collateral_address: Address = wallets[1]["addr"]
-collateral_skey: PaymentExtendedSigningKey = wallets[1]["skey"]
-collateral_vkey: PaymentExtendedVerificationKey = wallets[1]["vkey"]
-
-client_address: Address = wallets[2]["addr"]
-client_skey: PaymentExtendedSigningKey = wallets[2]["skey"]
-client_vkey: PaymentExtendedVerificationKey = wallets[2]["vkey"]
-
-exchange_client_address: Address = wallets[3]["addr"]
-exchange_client_skey: PaymentExtendedSigningKey = wallets[3]["skey"]
-exchange_client_vkey: PaymentExtendedVerificationKey = wallets[3]["vkey"]

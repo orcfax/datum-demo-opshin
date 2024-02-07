@@ -6,9 +6,6 @@ import sys
 from config import context, network
 from contract import RefundRedeemer  # pylint: disable=E0611
 from library import (
-    collateral_address,
-    collateral_skey,
-    collateral_vkey,
     get_contract_script,
     logger,
     payment_address,
@@ -39,25 +36,33 @@ def undeploy_contract():
         logger.warning("no script input or not utxo to spend!")
         sys.exit(0)
 
-    collateral_utxo = context.utxos(str(collateral_address))[0]
+    collateral_address = payment_address
+    collateral_amount: Final[int] = 3607615
+    collateral_utxos = context.utxos(str(collateral_address))
+    collateral_utxo = None
+    for collateral in collateral_utxos:
+        if int(collateral.output.amount.coin) > collateral_amount:
+            collateral_utxo = collateral
+            break
+
     redeemer = Redeemer(RefundRedeemer())
 
-    logger.info("Creating the transaction...")
+    logger.info("creating the transaction...")
     transaction = TransactionBuilder(context)
     transaction.add_script_input(sc_utxo, redeemer=redeemer)
     transaction.collaterals.append(collateral_utxo)
     transaction.validity_start = context.last_block_slot
     transaction.ttl = transaction.validity_start + 3600
-    transaction.required_signers = [payment_vkey.hash(), collateral_vkey.hash()]
-    logger.info("Signing the transaction...")
+    transaction.required_signers = [payment_vkey.hash()]
+    logger.info("signing the transaction...")
     signed_tx = transaction.build_and_sign(
-        [payment_skey, collateral_skey], change_address=payment_address
+        [payment_skey], change_address=payment_address
     )
     logger.info(signed_tx.id)
     save_transaction(signed_tx, "tx_client_undeploy.signed")
-    logger.info("Submitting the transaction...")
+    logger.info("submitting the transaction...")
     submit_and_log_tx(signed_tx)
-    logger.info("Done.")
+    logger.info("done")
 
 
 def main():
