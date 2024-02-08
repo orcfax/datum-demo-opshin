@@ -120,7 +120,7 @@ def validate_circuit_breaker(price: int, precision: int):
         ada_price = price * divisor
     assert (
         ada_price < ada_circuit_breaker
-    ), f"ada price is greater than breaker: {ada_price}"
+    ), f"ada price '{ada_price}' is greater than breaker: {CIRCUIT_BREAKER}"
 
 
 def validate_authentication_policy(reference_input: TxInInfo) -> bool:
