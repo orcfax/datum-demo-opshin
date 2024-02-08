@@ -2,29 +2,19 @@
 
 # pylint: disable=E0611
 
-import sys
 
-from config import (
-    LOVELACE_AMOUNT,
-    context,
-    network,
-)
+from pycardano import Address, TransactionBuilder, TransactionOutput, plutus_script_hash
+
+from config import context, network
 from contract import PublishParams
 from library import (
     get_contract_script,
     logger,
     payment_address,
-    save_transaction,
-    submit_and_log_tx,
     payment_skey,
     payment_vkey,
-)
-from pycardano import (
-    Address,
-    TransactionBuilder,
-    TransactionOutput,
-    UTxOSelectionException,
-    plutus_script_hash,
+    save_transaction,
+    submit_and_log_tx,
 )
 
 

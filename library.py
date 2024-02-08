@@ -4,24 +4,10 @@ import json
 import logging
 import sys
 from collections import OrderedDict
-from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 
 import cbor2
 import numpy
-import requests
-from config import (
-    ADA_USD_ORACLE_ADDR,
-    ADDRESSES_COUNT,
-    AUTH_POLICY,
-    context,
-    contract_script_file,
-    mnemonic_file_name,
-    network,
-    payment_derivation_path,
-    stake_derivation_path,
-    tx_template,
-)
 from pycardano import (
     Address,
     ExtendedSigningKey,
@@ -33,6 +19,19 @@ from pycardano import (
     StakeExtendedVerificationKey,
     Transaction,
     UTxO,
+)
+
+from config import (
+    ADA_USD_ORACLE_ADDR,
+    ADDRESSES_COUNT,
+    AUTH_POLICY,
+    context,
+    contract_script_file,
+    mnemonic_file_name,
+    network,
+    payment_derivation_path,
+    stake_derivation_path,
+    tx_template,
 )
 
 logging.basicConfig(

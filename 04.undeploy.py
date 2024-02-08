@@ -1,6 +1,9 @@
 """Undeploy the smart contract."""
 
 import sys
+from typing import Final
+
+from pycardano import Address, Redeemer, TransactionBuilder, plutus_script_hash
 
 from config import context, network
 from contract import RefundRedeemer  # pylint: disable=E0611
@@ -13,7 +16,6 @@ from library import (
     save_transaction,
     submit_and_log_tx,
 )
-from pycardano import Address, Redeemer, TransactionBuilder, plutus_script_hash
 
 
 def undeploy_contract():

@@ -3,8 +3,7 @@
 from os import getcwd
 from typing import Final
 
-
-from pycardano import Address, Network, OgmiosChainContext
+from pycardano import Network, OgmiosChainContext
 
 # Preprod
 #

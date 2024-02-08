@@ -1,19 +1,21 @@
 """Refund the deposited tokens."""
 
 import sys
+from typing import Final
+
+from pycardano import Address, Redeemer, TransactionBuilder, UTxO, plutus_script_hash
 
 from config import context, network
 from contract import RefundRedeemer  # pylint: disable=E0611
 from library import (
+    get_contract_script,
+    logger,
     payment_address,
     payment_skey,
     payment_vkey,
-    get_contract_script,
-    logger,
     save_transaction,
     submit_and_log_tx,
 )
-from pycardano import Address, Redeemer, TransactionBuilder, UTxO, plutus_script_hash
 
 
 def refund_tokens():

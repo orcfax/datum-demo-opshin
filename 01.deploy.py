@@ -3,6 +3,15 @@
 import binascii
 import sys
 
+from pycardano import (
+    Address,
+    TransactionBuilder,
+    TransactionOutput,
+    UTxOSelectionException,
+    Value,
+    plutus_script_hash,
+)
+
 from config import context, network
 from contract import PublishParams  # pylint: disable=E0611
 from library import (
@@ -13,14 +22,6 @@ from library import (
     payment_vkey,
     save_transaction,
     submit_and_log_tx,
-)
-from pycardano import (
-    Address,
-    TransactionBuilder,
-    TransactionOutput,
-    UTxOSelectionException,
-    Value,
-    plutus_script_hash,
 )
 
 

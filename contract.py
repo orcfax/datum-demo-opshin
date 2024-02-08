@@ -10,7 +10,6 @@ provides a useful reference point for some of what is being done here:
 
 from opshin.ledger.interval import *  # pylint ignore=W0401
 
-
 # policy ID of the Oracle AUTH tokens
 # hex = '104d51dd927761bf5d50d32e1ede4b2cff477d475fe32f4f780a4b21'
 policy_id = b"\x10MQ\xdd\x92wa\xbf]P\xd3.\x1e\xdeK,\xffG}G_\xe3/Ox\nK!"

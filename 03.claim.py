@@ -3,38 +3,39 @@
 # pylint: disable=R0914, R0915, E0611
 
 import sys
+from collections import OrderedDict
+from datetime import datetime
+from typing import Final
 
 import cbor2
-from config import ADA_USD_ORACLE_ADDR, context, network
-from contract import HelloWorldRedeemer, PublishParams
-from datetime import datetime
-from library import (
-    decode_utxo,
-    get_contract_script,
-    get_latest_utxo,
-    logger,
-    save_transaction,
-    payment_address,
-    payment_skey,
-    payment_vkey,
-    submit_and_log_tx,
-)
 from pycardano import (
     Address,
+    AlonzoMetadata,
+    AuxiliaryData,
+    Metadata,
     Redeemer,
     TransactionBuilder,
     TransactionFailedException,
     TransactionOutput,
     UTxO,
+    Value,
     VerificationKeyHash,
     plutus_script_hash,
-    AuxiliaryData,
-    AlonzoMetadata,
-    Metadata,
-    Value,
 )
 
-from collections import OrderedDict
+from config import ADA_USD_ORACLE_ADDR, context, network
+from contract import HelloWorldRedeemer, PublishParams
+from library import (
+    decode_utxo,
+    get_contract_script,
+    get_latest_utxo,
+    logger,
+    payment_address,
+    payment_skey,
+    payment_vkey,
+    save_transaction,
+    submit_and_log_tx,
+)
 
 
 def claim_script():
@@ -73,9 +74,9 @@ def claim_script():
     hello_world_value = OrderedDict()
     hello_world_value["title"] = "Hello Orcfax! 🚀"
     hello_world_value["message"] = "You have successfully consumed a price-feed datum!"
-    hello_world_value["note"] = (
-        "To inspect please look at the reference inputs for this Tx."
-    )
+    hello_world_value[
+        "note"
+    ] = "To inspect please look at the reference inputs for this Tx."
     hello_world_value[f"{feed_values[0][0]}".lower()] = f"{feed_values[0][1]}"
     hello_world_value[f"{feed_values[1][0]}".lower()] = f"{feed_values[1][1]}"
     hello_world_value["timestamp"] = f"{feed_timestamp_human}"
