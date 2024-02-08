@@ -63,7 +63,7 @@ def deploy_contract():
     except UTxOSelectionException as err:
         logger.error("ensure wallet: '%s' is funded: %s", deployer_address, err)
         sys.exit(1)
-    logger.info(signed_tx.id)
+    logger.info("signed tx id: %s", signed_tx.id)
     save_transaction(signed_tx, "tx_client_deploy.signed")
     logger.info("submitting the transaction...")
     submit_and_log_tx(signed_tx)

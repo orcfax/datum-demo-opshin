@@ -73,9 +73,9 @@ def claim_script():
     hello_world_value = OrderedDict()
     hello_world_value["title"] = "Hello Orcfax! 🚀"
     hello_world_value["message"] = "You have successfully consumed a price-feed datum!"
-    hello_world_value[
-        "note"
-    ] = "To inspect please look at the reference inputs for this Tx."
+    hello_world_value["note"] = (
+        "To inspect please look at the reference inputs for this Tx."
+    )
     hello_world_value[f"{feed_values[0][0]}".lower()] = f"{feed_values[0][1]}"
     hello_world_value[f"{feed_values[1][0]}".lower()] = f"{feed_values[1][1]}"
     hello_world_value["timestamp"] = f"{feed_timestamp_human}"
@@ -162,7 +162,7 @@ def claim_script():
         sys.exit(1)
 
     logger.info("tx signed")
-    logger.info(signed_tx.id)
+    logger.info("signed tx id: %s", signed_tx.id)
     save_transaction(signed_tx, "tx_claim.signed")
     logger.info("submitting the transaction...")
     submit_and_log_tx(signed_tx)

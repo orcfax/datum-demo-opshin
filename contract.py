@@ -18,6 +18,8 @@ policy_id = b"\x10MQ\xdd\x92wa\xbf]P\xd3.\x1e\xdeK,\xffG}G_\xe3/Ox\nK!"
 # Unsigned integer limit.
 uint_64_limit = 18446744073709551616
 
+CIRCUIT_BREAKER = 990000
+
 
 @dataclass
 class ValuePair(PlutusData):
@@ -69,29 +71,98 @@ class RefundRedeemer(PlutusData):
     pass
 
 
-def validate_circuit_breaker(l_precision: int, l_price: int):
-    """todo..."""
+def validate_fee_paid(context: ScriptContext, datum: PublishParams):
+    """Validate a small token fee was paid foe this transaction. The
+    fee could be combined with further checks alongside the
+    Oracle datum.
+    """
+    fee_address_found = False  # fee address found
+    fee_paid = False  # fee paid
+    for item in context.tx_info.outputs:
+        if datum.fee_address == item.address.payment_credential.credential_hash:
+            fee_address_found = True
+            if item.value.get(b"", {b"": 0}).get(b"", 0) >= datum.fee:
+                fee_paid = True
+    assert fee_address_found, "redeemer fee address not found in outputs!"
+    assert fee_paid, "redeemer fee too small!"
+
+
+def validate_not_reference_script(reference_input: TxInInfo) -> bool:
+    """Validate whether or not this is a script so that we know we're
+    working with a datum. If it is a script, return False, if it isn't
+    return True.
+    """
+    reference_script = reference_input.resolved.reference_script
+    if isinstance(reference_script, NoScriptHash):
+        return True
+    return False
+
+
+def validate_circuit_breaker(price: int, precision: int):
+    """Validate circuit breaker parameters for this contract.
+
+    The circuit breaker may come from another reference input placed
+    on-chain by the DApp.
+    """
     # ADA safety breaker: 0.99. This value might be encoded in another
     # reference datum belonging to the liquidator/client using this
     # smart contract.
-    ada_circuit_breaker = 990000
-
+    ada_circuit_breaker = CIRCUIT_BREAKER
     # Calculate a signed integer value for the price.
-    l_precision = -(l_precision)
-    ada_price_precision = min([6, l_precision])
+    precision = -(precision)
+    ada_price_precision = min([6, precision])
     ada_price_precision = max([ada_price_precision, 6])
     assert ada_price_precision <= 6, f"precision: {ada_price_precision}"
-    diff = max([l_precision, ada_price_precision]) - min(
-        [l_precision, ada_price_precision]
-    )
+    diff = max([precision, ada_price_precision]) - min([precision, ada_price_precision])
     divisor = int(f"1{'0'*diff}")
     if divisor > 1000000:
-        ada_price = l_price // divisor
+        ada_price = price // divisor
     else:
-        ada_price = l_price * divisor
+        ada_price = price * divisor
     assert (
         ada_price < ada_circuit_breaker
     ), f"ada price is greater than breaker: {ada_price}"
+
+
+def validate_authentication_policy(reference_input: TxInInfo) -> bool:
+    """Validate the authentication policy associated with the Orcfax
+    datum.
+    """
+    reference_input_datum = reference_input.resolved.datum
+    if isinstance(reference_input_datum, SomeOutputDatum):  # Ensure it's a datum.
+        values = reference_input.resolved.value
+        if any([value > 0 for value in values.get(policy_id, {b"": 0}).values()]):
+            return True
+    return False
+
+
+def validate_price_feed(reference_input: TxInInfo) -> None:
+    """An Orcfax v0 price-feed datum contains the target price-pair and
+    reversed value. We want to validate against the target value [0],
+    which is ADA in the case of ADA-USD.
+    """
+    reference_input_datum = reference_input.resolved.datum
+    if isinstance(reference_input_datum, SomeOutputDatum):  # # Ensure it's a datum.
+        price_feed: PriceFeed = reference_input_datum.datum
+        assert isinstance(price_feed, PriceFeed)
+        price_feed_name: bytes = price_feed.value_dict[b"name"]
+        assert price_feed_name == b"ADA-USD|USD-ADA"
+        price_feed_value: List[ValuePair] = price_feed.value_dict[b"value"]
+        price_feed_value_0: ValuePair = price_feed_value[0]
+        precision = price_feed_value_0.precision - uint_64_limit
+        price = price_feed_value_0.price
+        validate_circuit_breaker(price, precision)
+
+
+def validate_data_from_reference_inputs(context: ScriptContext):
+    """Validate the data in the reference inputs."""
+    for reference_input in context.tx_info.reference_inputs:
+        if validate_not_reference_script(reference_input):
+            assert validate_authentication_policy(
+                reference_input
+            ), "datum source has no authentication policy"
+            # Given an authenticated  datum Validate our application data.
+            validate_price_feed(reference_input)
 
 
 def validator(
@@ -101,69 +172,12 @@ def validator(
 ) -> None:
     """OpShin validator."""
 
-    # salt provides a user-controlled mechanism to create a unique
-    # script address for testing. Replace using nanoid, uuid, ulid, etc.
+    # provides a mechanism to create a unique script address for testing.
     salt = "O2c1TU6Jr12nSGyJJuAkp"
 
     if isinstance(redeemer, HelloWorldRedeemer):
-        # check if the fee has been paid to the fee address
-        fee_address_found = False  # fee address found
-        fee_paid = False  # fee paid
-        for item in context.tx_info.outputs:
-            if datum.fee_address == item.address.payment_credential.credential_hash:
-                fee_address_found = True
-                if item.value.get(b"", {b"": 0}).get(b"", 0) >= datum.fee:
-                    fee_paid = True
-        assert fee_address_found, "redeemer fee address not found in outputs!"
-        assert fee_paid, "redeemer fee too small!"
-
-        # Check if the datum was published by the oracle by checking
-        # if the token attached to the datum is the correct one
-        auth_policy = False  # Datum has the token with the correct auth policy attached
-        datum_is_price_feed = False  # Datum is a PriceFeed object
-
-        # An Orcfax v0 price-feed datum contains the target price-pair
-        # and reversed value. We want to validate against the left hand
-        # target value, so ADA in the case of ADA-USD.
-
-        # Price and precision work together to inform us about scientific
-        # notation, e.g. x * 10^-y.
-        l_price = 0  # Price.
-        l_precision = 0  # Precision.
-
-        for reference_input in context.tx_info.reference_inputs:
-            reference_script = reference_input.resolved.reference_script
-            if isinstance(reference_script, NoScriptHash):  # if this is not a script/
-                reference_input_datum = reference_input.resolved.datum
-                if isinstance(
-                    reference_input_datum, SomeOutputDatum
-                ):  # if this is a Datum.
-                    values = reference_input.resolved.value
-                    if any(
-                        [
-                            value > 0
-                            for value in values.get(policy_id, {b"": 0}).values()
-                        ]
-                    ):
-                        auth_policy = True
-                        price_feed: PriceFeed = reference_input_datum.datum
-                        datum_is_price_feed = True
-                        price_feed_name: bytes = price_feed.value_dict[b"name"]
-                        if price_feed_name == b"ADA-USD|USD-ADA":
-                            price_feed_value: List[ValuePair] = price_feed.value_dict[
-                                b"value"
-                            ]
-                            # Read the price.
-                            price_feed_value_0: ValuePair = price_feed_value[0]
-                            l_precision = price_feed_value_0.precision - uint_64_limit
-                            l_price = price_feed_value_0.price
-
-        # Assert features of this Tx are correct.
-        assert auth_policy, "datum source could not be authenticated!"
-        assert datum_is_price_feed, "oracle Datum is not a PriceFeed object!"
-
-        validate_circuit_breaker(l_precision, l_price)
-
+        validate_fee_paid(context, datum)
+        validate_data_from_reference_inputs(context)
     elif isinstance(redeemer, RefundRedeemer):
         # Allow the script to be undeployed.
         assert (

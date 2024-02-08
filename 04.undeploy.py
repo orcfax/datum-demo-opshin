@@ -1,6 +1,5 @@
 """Undeploy the smart contract."""
 
-
 import sys
 
 from config import context, network
@@ -58,7 +57,7 @@ def undeploy_contract():
     signed_tx = transaction.build_and_sign(
         [payment_skey], change_address=payment_address
     )
-    logger.info(signed_tx.id)
+    logger.info("signed tx id: %s", signed_tx.id)
     save_transaction(signed_tx, "tx_client_undeploy.signed")
     logger.info("submitting the transaction...")
     submit_and_log_tx(signed_tx)
