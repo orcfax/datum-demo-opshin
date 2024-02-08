@@ -42,6 +42,7 @@
         "cardano",
         "cbor",
         "cexplorer",
+        "claimables",
         "hexlify",
         "mnem",
         "OGMIOS",

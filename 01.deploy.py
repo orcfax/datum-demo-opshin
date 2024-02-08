@@ -1,79 +1,70 @@
 """Deploy the smart contract example."""
 
 import binascii
+import logging
 import sys
 
-from pycardano import (
-    Address,
-    TransactionBuilder,
-    TransactionOutput,
-    UTxOSelectionException,
-    Value,
-    plutus_script_hash,
-)
+import pycardano as pyc
 
-from config import context, network
-from contract import PublishParams  # pylint: disable=E0611
-from library import (
-    get_contract_script,
-    logger,
-    payment_address,
-    payment_skey,
-    payment_vkey,
-    save_transaction,
-    submit_and_log_tx,
-)
+import config
+import contract
+import library
+
+logger = logging.getLogger(__name__)
 
 
 def deploy_contract():
-    """Deploy the smart contract."""
-    contract_script = get_contract_script()
-    script_hash = plutus_script_hash(contract_script)
-    script_address = Address(script_hash, network=network)
-    deployer_address = payment_address
-    deployer = payment_vkey.hash().to_primitive()
-    deployer_skey = payment_skey
-    fee_address = payment_address.payment_part.to_primitive()
+    """Deploy the smart contract on-chain.
 
-    logger.info("script deployer address: %s", payment_address)
+    Once the script has been built and deployed and then finished with,
+    it is a sensible idea to undeploy it and release the value associated
+    with this script's UTxO. For this repository a script should be
+    undeployed before a new one is built so that the script's address
+    is preserved.
+    """
+    contract_script = library.get_contract_script()
+    script_hash = pyc.plutus_script_hash(contract_script)
+    script_address = pyc.Address(script_hash, network=config.network)
+    deployer_address = library.payment_address
+    deployer = library.payment_vkey.hash().to_primitive()
+    deployer_skey = library.payment_skey
+    fee_address = library.payment_address.payment_part.to_primitive()
+    logger.info("script deployer address: %s", library.payment_address)
     logger.info("script address: %s", script_address)
     logger.info(
         "fee address derived from payment address: %s",
-        Address(payment_address.payment_part),
+        pyc.Address(library.payment_address.payment_part),
     )
     logger.info("fee address PKH: %s", binascii.hexlify(fee_address).decode())
-
-    script_value = Value(70000000)
-
+    script_value = pyc.Value(70000000)
     fee = 1000000
-    datum = PublishParams(source=deployer, fee_address=fee_address, fee=fee)
-
+    datum = contract.PublishParams(source=deployer, fee_address=fee_address, fee=fee)
     logger.info("creating the transaction...")
-    transaction = TransactionBuilder(context)
+    transaction = pyc.TransactionBuilder(config.context)
     transaction.add_input_address(deployer_address)
     transaction.add_output(
-        TransactionOutput(
+        pyc.TransactionOutput(
             script_address, amount=script_value, datum=datum, script=contract_script
         )
     )
     logger.info("signing the transaction...")
-    try:
-        signed_tx = transaction.build_and_sign(
-            [deployer_skey], change_address=deployer_address
-        )
-    except UTxOSelectionException as err:
-        logger.error("ensure wallet: '%s' is funded: %s", deployer_address, err)
-        sys.exit(1)
+    signed_tx = transaction.build_and_sign(
+        [deployer_skey], change_address=deployer_address
+    )
     logger.info("signed tx id: %s", signed_tx.id)
-    save_transaction(signed_tx, "tx_client_deploy.signed")
+    library.save_transaction(signed_tx, "tx_client_deploy.signed")
     logger.info("submitting the transaction...")
-    submit_and_log_tx(signed_tx)
+    library.submit_and_log_tx(signed_tx)
     logger.info("done")
 
 
 def main():
     """Primary entry point for this script."""
-    deploy_contract()
+    try:
+        deploy_contract()
+    except pyc.PyCardanoException as err:
+        logger.error("deploy script failed: %s", err)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

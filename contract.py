@@ -59,7 +59,7 @@ class PublishParams(PlutusData):
 
 
 @dataclass
-class HelloWorldRedeemer(PlutusData):
+class HelloOrcfaxRedeemer(PlutusData):
     CONSTR_ID = 0
     pass
 
@@ -166,7 +166,7 @@ def validate_data_from_reference_inputs(context: ScriptContext):
 
 def validator(
     datum: PublishParams,
-    redeemer: Union[HelloWorldRedeemer, RefundRedeemer],
+    redeemer: Union[HelloOrcfaxRedeemer, RefundRedeemer],
     context: ScriptContext,
 ) -> None:
     """OpShin validator."""
@@ -174,7 +174,7 @@ def validator(
     # provides a mechanism to create a unique script address for testing.
     salt = "O2c1TU6Jr12nSGyJJuAkp"
 
-    if isinstance(redeemer, HelloWorldRedeemer):
+    if isinstance(redeemer, HelloOrcfaxRedeemer):
         validate_fee_paid(context, datum)
         validate_data_from_reference_inputs(context)
     elif isinstance(redeemer, RefundRedeemer):

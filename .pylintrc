@@ -33,6 +33,7 @@ ignore-patterns=
     Makefile,
     .editorconfig,
     .codespellrc,
+    .codespellignore,
 
 
 ignore-paths=
