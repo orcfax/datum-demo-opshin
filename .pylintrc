@@ -34,6 +34,7 @@ ignore-patterns=
     .editorconfig,
     .codespellrc,
     .codespellignore,
+    ^(.+).jpg,
 
 
 ignore-paths=
