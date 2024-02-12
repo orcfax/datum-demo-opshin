@@ -32,7 +32,7 @@ def get_script_and_claimables(
             datum = cbor2.loads(item.output.datum.cbor)
             # PublishParams are validated in our smart contract.
             datum_obj = contract.PublishParams(
-                datum.value[0], datum.value[1], datum.value[2]
+                datum.value[1][0], datum.value[1][1], datum.value[1][2]
             )
             fee_address = pyc.Address(
                 pyc.VerificationKeyHash.from_primitive(datum_obj.fee_address),
