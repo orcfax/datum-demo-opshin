@@ -33,6 +33,8 @@ ignore-patterns=
     Makefile,
     .editorconfig,
     .codespellrc,
+    .codespellignore,
+    ^(.+).jpg,
 
 
 ignore-paths=

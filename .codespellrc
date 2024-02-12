@@ -6,4 +6,5 @@ skip =
 count =
 quiet-level = 3
 ignore-words-list =
-    placeholder
+    placeholder,
+    CIPs,
