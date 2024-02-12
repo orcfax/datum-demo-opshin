@@ -60,6 +60,7 @@ def refund_tokens():
     logger.info(signed_tx.id)
     library.save_transaction(signed_tx, "tx_client_refund.signed")
     library.submit_and_log_tx(signed_tx)
+    logger.info("done")
 
 
 def main():
