@@ -17,7 +17,7 @@ The smart contract must check the following:
 
 * an Orcfax price-feed datum was published by the real Oracle (this is true when
 the UTxO contains a token created with the correct minting policy).
-* the value of the a price on-chain has not exceeded set boundaries.
+* the value of the price on-chain has not exceeded set boundaries.
 * a small token fee has been paid to collect a deposited value.
 
 The latest published Orcfax datum must be identified off-chain then the
@@ -66,7 +66,7 @@ python generate_mnemonic_phrase.py
 > Note: If the script has already been run once and a Bip32 pass phrase file
 > exists the command will output the phrase and the associated wallet addresses
 > without overwriting anything. This can be helpful to remind yourself of the
-> addresses that you're working with. (do not run the script in public on
+> addresses that you're working with. (do not run the script in public or on
 > mainnet!)
 >
 > The generate script should create a `.wallet` folder within the repository. If
@@ -90,7 +90,7 @@ wallet. In total the wallet only needs about 75 ADA.
 
 #### Funding amounts
 
-The script `generate_mnemonic_phrase.py` will output addresses with feedback
+The script `generate_mnemonic_phrase.py` will output addresses below the seed phrase with feedback
 as follows:
 
 ```text
@@ -129,6 +129,18 @@ Install the required modules:
 python -m pip install --upgrade pip
 python -m pip install -r requirements/local.txt
 ```
+
+Now that the virtual environment (venv) has been steablished, you can create a seed phrase for wallet generation with
+the following script call:
+
+```sh
+python generate_mnemonic_phrase.py
+```
+
+Copying the preprod address generated, proceed to fund from the Cardano [Faucet][faucet-1].
+Directions on how to use this service can be found on the faucet website.
+
+[faucet-1]: https://docs.cardano.org/cardano-testnet/tools/faucet/
 
 ### The Example DApp contract using an Orcfax datum
 
@@ -348,7 +360,7 @@ We work backwards to do this, working first from the oracle based DApp.
 1. if funds haven't been claimed using the claim script:
 
 ```sh
-python refund.py
+python 05.refund.py
 ```
 
 2. undeploy the script:
