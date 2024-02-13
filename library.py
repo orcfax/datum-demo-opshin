@@ -160,6 +160,7 @@ def _decode_number(value_pair: list):
     """Decode a number value."""
     significand = numpy.uint64(value_pair[0]).astype(numpy.int64)
     base10_component = numpy.uint64(value_pair[1]).astype(numpy.int64)
+    logger.info("datum significand: %s, base_10: %s", significand, base10_component)
     value = significand * 10 ** numpy.float_(base10_component)
     return value
 
