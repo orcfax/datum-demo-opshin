@@ -107,17 +107,17 @@ def validate_circuit_breaker(price: int, precision: int):
     # reference datum belonging to the liquidator/client using this
     # smart contract.
     ada_circuit_breaker = CIRCUIT_BREAKER
-    # Calculate a signed integer value for the price.
+    # Convert ada_price to six decimal places so that we can work with
+    # it correctly.
     precision = -(precision)
-    ada_price_precision = min([6, precision])
-    ada_price_precision = max([ada_price_precision, 6])
-    assert ada_price_precision <= 6, f"precision: {ada_price_precision}"
-    diff = max([precision, ada_price_precision]) - min([precision, ada_price_precision])
-    divisor = int(f"1{'0'*diff}")
-    if divisor > 1000000:
-        ada_price = price // divisor
-    else:
-        ada_price = price * divisor
+    ada_price = price
+    if precision > 6:
+        # Purely for this script we constrain the price to six decimal
+        # places. In future Orcfax datum we will make sure the precision
+        # is constrained beforehand, i.e. will always be 6 for ADA/USD.
+        # The precision will also be visible in the datum.
+        ada_price_bytes = bytes(price)[:6]
+        ada_price = int(str(ada_price_bytes))
     assert (
         ada_price < ada_circuit_breaker
     ), f"ada price '{ada_price}' is greater than breaker: {CIRCUIT_BREAKER}"
@@ -172,7 +172,7 @@ def validator(
     """OpShin validator."""
 
     # provides a mechanism to create a unique script address for testing.
-    salt = "O2c1TU6Jr12nSGyJJuAkp"
+    salt = "O2c1TU6Jr14nSGyJJuAk9"
 
     if isinstance(redeemer, HelloOrcfaxRedeemer):
         validate_fee_paid(context, datum)
