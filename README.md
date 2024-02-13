@@ -68,10 +68,14 @@ python generate_mnemonic_phrase.py
 > without overwriting anything. This can be helpful to remind yourself of the
 > addresses that you're working with. (do not run the script in public on
 > mainnet!)
+>
+> The generate script should create a `.wallet` folder within the repository. If
+> the script has any difficulties creating this, please try creating it manually
+> and then running `generate_mnemonic_phrase.py` again.
 
 ### Funding wallets
 
-Using `generate_mnemonic_phrase.py` to create a wallet address or see the
+Having used `generate_mnemonic_phrase.py` to create a wallet address or see the
 existing address value you can proceed to fund it.
 
 #### Wallet funding
