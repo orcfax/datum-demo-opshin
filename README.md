@@ -83,15 +83,13 @@ existing address value you can proceed to fund it.
 Given a preprod wallet, it can be funded from the Cardano [Faucet][faucet-1].
 Directions on how to use this service can be found on the faucet website.
 
-[faucet-1]: https://docs.cardano.org/cardano-testnet/tools/faucet/
-
 All the funds that are required for this demo will be contained in this
 wallet. In total the wallet only needs about 75 ADA.
 
 #### Funding amounts
 
-The script `generate_mnemonic_phrase.py` will output addresses below the seed phrase with feedback
-as follows:
+The script `generate_mnemonic_phrase.py` will output addresses below the seed
+phrase with feedbackas follows:
 
 ```text
 payment addr (requires ⩾ 75 ADA): 'addr_test1qrc...e3'
@@ -130,17 +128,16 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements/local.txt
 ```
 
-Now that the virtual environment (venv) has been steablished, you can create a seed phrase for wallet generation with
-the following script call:
+Now that the virtual environment (venv) has been established, you can create a
+seed phrase for wallet generation with the following script call:
 
 ```sh
 python generate_mnemonic_phrase.py
 ```
 
-Copying the preprod address generated, proceed to fund from the Cardano [Faucet][faucet-1].
-Directions on how to use this service can be found on the faucet website.
-
-[faucet-1]: https://docs.cardano.org/cardano-testnet/tools/faucet/
+Copying the preprod address generated, proceed to fund from the Cardano
+[Faucet][faucet-1]. Directions on how to use this service can be found on the
+faucet website.
 
 ### The Example DApp contract using an Orcfax datum
 
@@ -388,3 +385,7 @@ to start looking at parameterizing the wallets used in these examples. They will
 also want to look at making greater use of the data available to them in the
 datum, as well as accessing additional reference inputs, perhaps feeding into
 the script different circuit breaker values and other off-chain values.
+
+<!-- references -->
+
+[faucet-1]: https://docs.cardano.org/cardano-testnet/tools/faucet/
